@@ -18,9 +18,6 @@
             <li class="nav-item" v-if="authStore.isLoggedIn">
               <router-link to="/" class="nav-link" @click="logout">Logout</router-link>
             </li>
-            <li class="nav-item">
-              <router-link to="/chat" class="nav-link">Chat</router-link>
-            </li>
           </ul>
         </div>
       </div>

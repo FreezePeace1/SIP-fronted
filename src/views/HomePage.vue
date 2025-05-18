@@ -8,7 +8,12 @@
       <div v-for="friend in friends" :key="friend.id" class="friend-item">
         <span class="friend-name">{{ friend.userName }}</span>
         <div class="buttons">
-          <button class="btn btn-sm btn-outline-primary">Написать</button>
+          <button
+            class="btn btn-sm btn-outline-primary"
+            @click="openChat(friend.id.toString(), friend.userName)"
+          >
+            Написать
+          </button>
           <button class="btn btn-sm btn-outline-primary">Позвонить</button>
         </div>
       </div>
@@ -20,6 +25,7 @@
 <script lang="ts">
 import { onMounted, ref } from 'vue'
 import { useAuthStore } from '@/store/auth'
+import { useRouter } from 'vue-router'
 import axios from 'axios'
 
 interface Friend {
@@ -30,8 +36,19 @@ interface Friend {
 export default {
   setup() {
     const authStore = useAuthStore()
+    const router = useRouter()
     const message = ref('')
     const friends = ref<Friend[]>([])
+
+    const openChat = (friendId: string, friendName: string) => {
+      router.push({
+        path: '/chat',
+        query: {
+          friendId: friendId,
+          friendName: friendName,
+        },
+      })
+    }
 
     const getFriends = async () => {
       try {
@@ -44,8 +61,6 @@ export default {
             withCredentials: true,
           },
         )
-
-        console.log(response.data)
 
         if (Array.isArray(response.data.data)) {
           friends.value = response.data.data as Friend[]
@@ -71,7 +86,6 @@ export default {
         if (response.status == 200) {
           authStore.setAuth(true)
           message.value = 'Добро пожаловать, ' + content.data.userName
-
           await getFriends()
         } else {
           message.value = 'Вы не вошли в аккаунт'
@@ -82,12 +96,18 @@ export default {
       }
     })
 
-    return { message, authStore, friends }
+    return {
+      message,
+      authStore,
+      friends,
+      openChat,
+    }
   },
 }
 </script>
 
 <style scoped>
+/* Стили остаются без изменений */
 .container {
   max-width: 600px;
   margin: 0 auto;

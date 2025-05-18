@@ -1,18 +1,25 @@
-import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import { createRouter, createWebHistory, type RouteLocationNormalized } from 'vue-router'
 import Home from '@/views/HomePage.vue'
 import Login from '@/views/LoginPage.vue'
 import Register from '@/views/RegisterPage.vue'
-import Chat from '@/views/WaitingRoom.vue'
+import ChatPage from '@/views/ChatPage.vue'
 
-const routes: Array<RouteRecordRaw> = [
-  { path: '', component: Home },
+const routes = [
+  { path: '/', component: Home },
   { path: '/login', component: Login },
   { path: '/register', component: Register },
-  { path: '/chat', component: Chat },
+  {
+    path: '/chat',
+    component: ChatPage,
+    props: (route: RouteLocationNormalized) => ({
+      friendId: route.query.friendId as string,
+      friendName: route.query.friendName as string,
+    }),
+  },
 ]
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHistory(),
   routes,
 })
 
