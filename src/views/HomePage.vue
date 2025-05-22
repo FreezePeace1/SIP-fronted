@@ -39,13 +39,21 @@
           >
             Чат
           </button>
-          <button @click="removeFriend(friend.id)" class="btn btn-sm btn-danger">Удалить</button>
+          <button class="btn btn-sm btn-primary" v-if="authStore.isLoggedIn">
+            <router-link to="/call" class="nav-link">Call</router-link>
+          </button>
+          <button @click="removeFriend(friend.id)" class="btn btn-sm btn-danger">
+            Удалить из друзей
+          </button>
         </div>
       </div>
     </div>
 
     <!-- Сообщения об отсутствии данных -->
-    <div v-if="!friends.length && !friendRequests.length" class="empty-state">
+    <div
+      v-if="authStore.isLoggedIn && !friends.length && !friendRequests.length"
+      class="empty-state"
+    >
       <p>Список друзей пуст</p>
     </div>
   </div>

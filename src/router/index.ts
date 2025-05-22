@@ -3,6 +3,7 @@ import Home from '@/views/HomePage.vue'
 import Login from '@/views/LoginPage.vue'
 import Register from '@/views/RegisterPage.vue'
 import ChatPage from '@/views/ChatPage.vue'
+import VideoCall from '@/views/VideoCall.vue'
 
 const routes = [
   { path: '/', component: Home },
@@ -16,6 +17,7 @@ const routes = [
       friendName: route.query.friendName as string,
     }),
   },
+  { path: '/call', component: VideoCall },
 ]
 
 const router = createRouter({

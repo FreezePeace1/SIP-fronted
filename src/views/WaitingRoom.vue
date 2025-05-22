@@ -36,7 +36,6 @@
 <script lang="ts">
 import { reactive, ref, computed, onMounted } from 'vue'
 import { HubConnectionBuilder, HubConnection } from '@microsoft/signalr'
-import Chat from '@/views/ChatPage.vue'
 
 interface Message {
   userName: string
@@ -45,10 +44,6 @@ interface Message {
 }
 
 export default {
-  components: {
-    Chat,
-  },
-
   setup() {
     const data = reactive({
       UserName: '',
