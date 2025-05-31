@@ -27,6 +27,28 @@
       </div>
     </div>
 
+    <!-- Список друзей -->
+    <div v-if="friends.length > 0" class="friends-section">
+      <h3>Ваши друзья</h3>
+      <div v-for="friend in friends" :key="friend.id" class="friend-item">
+        <span>{{ friend.userName }}</span>
+        <div class="friend-actions">
+          <button
+            @click="openChat(friend.id.toString(), friend.userName)"
+            class="btn btn-sm btn-primary"
+          >
+            Чат
+          </button>
+          <button @click="startCall(friend.id)" class="btn btn-sm btn-primary">Call</button>
+          <button @click="removeFriend(friend.id)" class="btn btn-sm btn-danger">
+            Удалить из друзей
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <br />
+
     <!-- Секция истории звонков -->
     <div v-if="callingstory.length > 0" class="calling-history-section">
       <h3>История звонков</h3>
@@ -45,26 +67,6 @@
           <div v-else class="status">
             <span class="badge bg-warning">В процессе</span>
           </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Список друзей -->
-    <div v-if="friends.length > 0" class="friends-section">
-      <h3>Ваши друзья</h3>
-      <div v-for="friend in friends" :key="friend.id" class="friend-item">
-        <span>{{ friend.userName }}</span>
-        <div class="friend-actions">
-          <button
-            @click="openChat(friend.id.toString(), friend.userName)"
-            class="btn btn-sm btn-primary"
-          >
-            Чат
-          </button>
-          <button @click="startCall(friend.id)" class="btn btn-sm btn-primary">Call</button>
-          <button @click="removeFriend(friend.id)" class="btn btn-sm btn-danger">
-            Удалить из друзей
-          </button>
         </div>
       </div>
     </div>
