@@ -15,7 +15,7 @@
     </div>
 
     <div class="controls">
-      <template v-if="!isInitiator">
+      <template v-if="!isInitiator && !roomId">
         <input
           type="text"
           v-model="roomIdInput"
@@ -24,7 +24,7 @@
         />
       </template>
       <button @click="startCallHandler" :disabled="isCalling">
-        {{ buttonText }}
+        {{ roomId ? 'Join Call' : buttonText }}
       </button>
       <button @click="endCall" :disabled="!isCalling">End Call</button>
       <button @click="toggleCamera">
@@ -33,7 +33,8 @@
       <button @click="toggleMicrophone">
         {{ microphoneEnabled ? 'Disable Microphone' : 'Enable Microphone' }}
       </button>
-      <p>Room ID: {{ currentRoomId || 'Not connected' }}</p>
+      <p v-if="roomId">Room ID: {{ roomId }}</p>
+      <p v-else>Room ID: {{ currentRoomId || 'Not connected' }}</p>
       <p class="status">Status: {{ statusMessage }}</p>
     </div>
   </div>
@@ -42,6 +43,8 @@
 <script lang="ts">
 import { defineComponent, ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { HubConnectionBuilder, HubConnection } from '@microsoft/signalr'
+import { useRouter } from 'vue-router'
+import axios from 'axios'
 
 const iceConfig = {
   iceServers: [
@@ -66,8 +69,23 @@ type SignalMessage =
   | { type: 'ice-candidate'; roomId: string; candidate: RTCIceCandidateInit }
 
 export default defineComponent({
+  props: {
+    friendId: {
+      type: String,
+      default: '',
+    },
+    friendName: {
+      type: String,
+      default: '',
+    },
+    roomId: {
+      type: String,
+      default: '',
+    },
+  },
+
   name: 'VideoCall',
-  setup() {
+  setup(props) {
     const connection = ref<HubConnection | null>(null)
     const localVideo = ref<HTMLVideoElement | null>(null)
     const remoteVideo = ref<HTMLVideoElement | null>(null)
@@ -84,6 +102,10 @@ export default defineComponent({
     const cameraEnabled = ref(false)
     const microphoneEnabled = ref(false)
     const isSignalRConnected = ref(false)
+
+    const friendId = ref(props.friendId)
+    const router = useRouter()
+    const roomId = ref(props.roomId)
 
     const buttonText = computed(() => {
       if (!hasPermissions.value) return 'Request Permissions'
@@ -225,8 +247,11 @@ export default defineComponent({
     const startCallHandler = async () => {
       try {
         isCalling.value = true
-        currentRoomId.value = roomIdInput.value.trim() || generateRoomId()
-        isInitiator.value = !roomIdInput.value.trim()
+        // Используем ID комнаты из параметров или генерируем новый
+        currentRoomId.value = roomId.value || roomIdInput.value.trim() || generateRoomId()
+
+        // Если ID комнаты был передан - мы не инициатор
+        isInitiator.value = !roomId.value && !roomIdInput.value.trim()
 
         console.log('Attempting to join room, isInitiator = ' + isInitiator.value)
         await initPeerConnection(isInitiator.value)
@@ -252,6 +277,39 @@ export default defineComponent({
         endCall()
       }
     }
+
+    //Завершение звонка
+    const endCallOnBackend = async () => {
+      try {
+        if (!friendId.value) return
+
+        await axios.put(
+          'http://localhost:5022/callingstory/enduserscallingstory',
+          {
+            SecondParticipantId: friendId.value,
+          },
+          { withCredentials: true },
+        )
+        console.log('Call ended successfully on backend')
+      } catch (error) {
+        console.error('Failed to end call on backend:', error)
+      }
+    }
+
+    const handleBeforeUnload = async () => {
+      if (isCalling.value) {
+        await endCallOnBackend()
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    onBeforeUnmount(() => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      if (isCalling.value) {
+        endCallOnBackend()
+      }
+    })
 
     onMounted(async () => {
       try {
@@ -403,7 +461,7 @@ export default defineComponent({
       }
     }
 
-    const endCall = () => {
+    const endCall = async () => {
       isCalling.value = false
       currentRoomId.value = ''
       roomIdInput.value = ''
@@ -420,7 +478,11 @@ export default defineComponent({
         localStream.value = null
       }
 
+      await endCallOnBackend()
+
       setStatus('Call ended')
+
+      router.push('/')
     }
 
     const generateRoomId = () => Math.random().toString(36).substring(2, 8).toUpperCase()

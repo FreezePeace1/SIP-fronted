@@ -27,6 +27,28 @@
       </div>
     </div>
 
+    <!-- Секция истории звонков -->
+    <div v-if="callingstory.length > 0" class="calling-history-section">
+      <h3>История звонков</h3>
+      <div v-for="story in callingstory" :key="story.id" class="story-item">
+        <div class="story-info">
+          <div class="participant">
+            <span class="label">С кем:</span> {{ story.secondParticipantName }}
+          </div>
+          <div class="time">
+            <span class="label">Начало:</span> {{ formatDateTime(story.createdAt) }}
+          </div>
+          <div v-if="story.endedAt" class="duration">
+            <span class="label">Длительность:</span>
+            {{ calculateDuration(story.createdAt, story.endedAt) }}
+          </div>
+          <div v-else class="status">
+            <span class="badge bg-warning">В процессе</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Список друзей -->
     <div v-if="friends.length > 0" class="friends-section">
       <h3>Ваши друзья</h3>
@@ -39,9 +61,7 @@
           >
             Чат
           </button>
-          <button class="btn btn-sm btn-primary" v-if="authStore.isLoggedIn">
-            <router-link to="/call" class="nav-link">Call</router-link>
-          </button>
+          <button @click="startCall(friend.id)" class="btn btn-sm btn-primary">Call</button>
           <button @click="removeFriend(friend.id)" class="btn btn-sm btn-danger">
             Удалить из друзей
           </button>
@@ -75,6 +95,20 @@ interface FriendRequest {
   userName: string
 }
 
+interface CallingStory {
+  id: number
+  secondParticipantName: string
+  createdAt: Date
+  endedAt?: Date
+}
+
+interface CallingStoryResponse {
+  id: number
+  secondParticipantName: string
+  createdAt: string // Сервер возвращает строку
+  endedAt: string | null
+}
+
 export default {
   setup() {
     const authStore = useAuthStore()
@@ -82,6 +116,7 @@ export default {
     const message = ref('')
     const friends = ref<Friend[]>([])
     const friendRequests = ref<FriendRequest[]>([])
+    const callingstory = ref<CallingStory[]>([])
     const searchQuery = ref('')
     const searchResult = ref<Friend | null>(null)
 
@@ -118,6 +153,92 @@ export default {
         friends.value = response.data.data
       } catch (error) {
         console.error('Ошибка загрузки друзей:', error)
+      }
+    }
+
+    //Получение истории звонков
+    const fetchCallingStories = async () => {
+      try {
+        const response = await axios.get<{ data: CallingStoryResponse[] }>(
+          'http://localhost:5022/callingstory/getusercallingstories',
+          { withCredentials: true },
+        )
+
+        callingstory.value = response.data.data.map((story) => ({
+          id: story.id,
+          secondParticipantName: story.secondParticipantName,
+          createdAt: new Date(story.createdAt),
+          endedAt: story.endedAt ? new Date(story.endedAt) : undefined,
+        }))
+      } catch (error) {
+        console.error('Не удалось получить историю звонков', error)
+      }
+    }
+
+    // Новые функции для работы с датами
+    const formatDateTime = (date: Date) => {
+      return new Date(date).toLocaleString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    }
+
+    const calculateDuration = (start: Date, end: Date) => {
+      const seconds = Math.floor((end.getTime() - start.getTime()) / 1000)
+      const minutes = Math.floor(seconds / 60)
+      const remainingSeconds = seconds % 60
+
+      return `${minutes} мин. ${remainingSeconds} сек.`
+    }
+
+    // Начало звонка
+    const startCall = async (friendId: number) => {
+      try {
+        const friend = friends.value.find((f) => f.id === friendId)
+        if (!friend) {
+          alert('Друг не найден')
+          return
+        }
+
+        // 1. Создаем/получаем комнату для звонка
+        const roomResponse = await axios.post(
+          'http://localhost:5022/webchatroom/getuserswebchatroom',
+          {
+            SecondParticipantId: friendId.toString(),
+          },
+          { withCredentials: true },
+        )
+
+        if (!roomResponse.data.isSucceed) {
+          throw new Error(roomResponse.data.errorMessage || 'Не удалось создать комнату')
+        }
+
+        const roomId = roomResponse.data.data.id
+
+        // 2. Начинаем звонок (создаем запись в истории)
+        await axios.post(
+          'http://localhost:5022/callingstory/startuserscallingstory',
+          {
+            SecondParticipantId: friendId.toString(),
+          },
+          { withCredentials: true },
+        )
+
+        // 3. Переходим на страницу звонка с параметрами комнаты
+        router.push({
+          path: '/call',
+          query: {
+            friendId: friendId.toString(),
+            friendName: friend.userName,
+            roomId: roomId, // Передаем ID комнаты
+          },
+        })
+      } catch (error) {
+        console.error('Ошибка начала звонка:', error)
+        alert('Произошла ошибка при начале звонка')
       }
     }
 
@@ -248,6 +369,9 @@ export default {
 
         await fetchFriends()
         await fetchRequests()
+        await fetchFriends()
+        await fetchRequests()
+        await fetchCallingStories() // Добавьте этот вызов
       } catch (error) {
         console.log('Error fetching account data:', error)
       }
@@ -266,6 +390,10 @@ export default {
       removeFriend,
       openChat,
       declineRequest,
+      callingstory,
+      formatDateTime,
+      calculateDuration,
+      startCall,
     }
   },
 }

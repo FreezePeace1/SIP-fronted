@@ -17,7 +17,15 @@ const routes = [
       friendName: route.query.friendName as string,
     }),
   },
-  { path: '/call', component: VideoCall },
+  {
+    path: '/call',
+    component: VideoCall,
+    props: (route: RouteLocationNormalized) => ({
+      friendId: route.query.friendId as string,
+      friendName: route.query.friendName as string,
+      roomId: route.query.roomId as string,
+    }),
+  },
 ]
 
 const router = createRouter({
